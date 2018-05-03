@@ -1,0 +1,40 @@
+property set TollProperties is
+  with EMV2;
+      
+    RequestResponseFailureRate : constant EMV2::DistributionSpecification => 
+    [ProbabilityValue => 1.0E-8; Distribution => Fixed;];
+    
+    PaymentFailureRate : constant EMV2::DistributionSpecification => 
+    [ProbabilityValue => 1.0E-4; Distribution => Fixed;];
+    
+    DataCollectionFailureRate : constant EMV2::DistributionSpecification => 
+    [ProbabilityValue => 1.0E-3; Distribution => Fixed;];
+    
+    TollCalculationFailureRate : constant EMV2::DistributionSpecification => 
+    [ProbabilityValue => 1.0E-6; Distribution => Fixed;];
+    
+    TransactionFailureRate : constant EMV2::DistributionSpecification => 
+    [ProbabilityValue => 1.0E-5; Distribution => Fixed;];
+    
+    PaymentDeviceFailureRate : constant EMV2::DistributionSpecification => 
+    [ProbabilityValue => 1.6E-7; Distribution => Fixed;];
+    
+    RoadsideDisplayFailureRate : constant EMV2::DistributionSpecification => 
+    [ProbabilityValue => 1.6E-2; Distribution => Fixed;];
+    
+    DatabaseFailureRate : constant EMV2::DistributionSpecification => 
+    [ProbabilityValue => 1.6E-3; Distribution => Fixed;];
+    
+    UserValidationFailureRate : constant EMV2::DistributionSpecification => 
+    [ProbabilityValue => 1.6E-4; Distribution => Fixed;];
+    
+    BillGenerationFailureRate : constant EMV2::DistributionSpecification => 
+    [ProbabilityValue => 1.6E-5; Distribution => Fixed;];
+    
+    UserRegistrationFailureRate : constant EMV2::DistributionSpecification => 
+    [ProbabilityValue => 1.6E-2; Distribution => Fixed;];
+    
+    ViolationDetectionFailureRate : constant EMV2::DistributionSpecification => 
+    [ProbabilityValue => 1.6E-4; Distribution => Fixed;];
+    
+end TollProperties; 

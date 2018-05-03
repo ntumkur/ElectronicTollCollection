@@ -1,0 +1,52 @@
+assurance case electronicToll_AssuranceCase:"Assurance case for the Electronic Toll Collection" for etc[
+assurance plan assurePlan: "Assurance case for electronic toll collection"
+
+for wbs[
+		assure etcPlan
+		issues "This plan is for assurance case for electronic toll collection"
+		]
+
+assurance task Test1:"Assurance task for single component"[
+		category running nominal
+		quality correctness security reliability
+		]
+		
+assurance task Test2:"Assurance task for entire system"[
+		category running failed
+		quality usability security faultTolerance maintainability
+		]
+
+assurance task Test3:"Assurance task to check Vehicle OBE"[
+		category running failed
+		quality accuracy reliability maintainability
+		]
+		
+assurance task Test4:"Assurance task for ITS Roadway Equipment"[
+		category running
+		quality accuracy reliability
+		]
+		
+assurance task Test5:"Assurance task for Personal Information Device"[
+		category running failed nominal
+		quality reliability dependability
+		]
+		
+assurance task Test6:"Assurance task to check working of Roadside Equipment"[
+		category running failed
+		quality accuracy reliability
+		]
+
+assurance task Test7:"Assurance task for payment administrator"[
+		category running failed
+		quality maintainability correctness
+		]
+
+assurance task Test8:"Assurance task for Payment Administration Center"[
+		category running failed nominal
+		quality security dependability
+		]
+		
+assurance task Test9:"Assurance task for Financial Center"[
+		category running failed
+		quality accuracy reliability security
+		]

@@ -1,0 +1,85 @@
+SystemRequirements::=
+system requirements user_account for payment_administration_center|driver
+[
+requirement req1 : "Setup account"
+[
+val setacc = "0" or "1"
+description " it creates user account"
+rationale "account needed in order to process payment"
+quality usability
+]
+requirement req2 : "Update account"
+[
+description " it updates user details" 
+rationale "user might need to change his details" 
+quality usability
+]
+system requirements toll_pay for driver
+[
+requirement req3 : "make payment"
+[
+compute vehicle_paymnt_info
+value predicate vehicle_paymnt_info > 0
+description " the user makes payment"
+]
+requirement req4 : "account reports"
+[
+description "show user account reports"
+rationale "The users and administration should be able to see the reports on their account status and activities"
+quality maintainability efficiency usability
+]
+]
+
+system requiements payment_processing for payment_administration_center
+[
+requirement req5 : "process payment"
+[
+compute vehicle_paymnt_info
+value predicate vehicle_paymnt_info > 0
+description "the payment is processed after user has submitted payment"
+rationale "The payment needs to be processed"
+mitigates "Invalid payment"
+]
+requirement req6 : "detect violation"
+[
+compute vehicle_paymnt_info
+decription "any violation in payment of toll is detected"
+mitigates "payment violation"
+]
+requirement req7 : "notify violation"
+[
+val paymnt_violatn_notif 
+description " payment administrator notifies the user of any violation in payment"
+rationale "user needs to be notified of violations committed"
+]
+requirement req8 : "coordinate payments between toll agencies"
+[
+description "coordination of payments between peer toll agencies"
+rationale "multiple types of payments needs to be supported"
+quality reliability efficiency usability
+]
+requirement req9 : "interaction between financial center and PAC"
+[
+description "verify interaction between financial center and Payment Administration Center "
+rationale "The transactions between financial centers and PAC should be carried out smoothly"
+quality reliability efficiency security
+]
+requirement req10 : "interaction between DMV and PAC"
+[
+description "verify interaction between DMV and Payment Administration Center "
+rationale "The transactions between DMV and PAC should be carried out smoothly"
+quality reliability efficiency usability
+]
+requirement req11 : "interaction between RPE and PAC"
+[
+description "verify interaction between Roadway Payment Equipment and Payment Administration Center "
+rationale "The transactions between the two components should be carried out smoothly"
+quality reliability efficiency security
+]
+requirement req12 : "interaction between driver and RPE"
+[
+description "verify interaction between driver and Roadway Payment Equipment"
+rationale "The transactions between the two components should be carried out smoothly"
+quality accuracy
+]
+]

@@ -1,0 +1,34 @@
+package ETC_Proofs
+public
+
+annex resolute 
+{**
+	
+check_connection1 () <=
+  ** "Check the connection between roadway payment equipment and driver" **
+  check_status("rpe","driver")
+		
+check_connection2 () <=
+  ** "Check the connection between vehicle obe and driver" **
+  check_status("vobe","driver")
+  
+check_connection3 () <=
+  ** "Check the connection between roadway payment equipment and roadside equipment" **
+  check_status("rpe","rse")
+  
+check_connection4 () <=
+  ** "Check the connection between roadway payment equipment and payment administrator" **
+  check_status("rpe","pa")
+  
+check_connection5 () <=
+  ** "Check the connection between payment administartor and financial institution" **
+  check_status("pa","fi")
+		
+	
+
+	
+check_status(comp1 : string, comp2 : string ) <=
+  ** "Check  in file " C:\\etc.stp " contains components name "comp1" and "comp2" ** 
+  analysis("ngrep", C:\\etc.stps, comp1, comp2) 
+**};  
+end ETC_Proofs;

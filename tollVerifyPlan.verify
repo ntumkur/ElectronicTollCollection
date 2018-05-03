@@ -1,0 +1,150 @@
+verification plan tollPlan for tollReqs[
+
+	description"This is the verification plan for the requirements in tollReqs"
+	
+		claim req1:"The user account is setup correctly" [		
+			rationale "This test case is written to check if user account is setup successfully"
+			
+			activities
+			acc_ActTest1:"Test of successful account setup":
+			Plugins.checkSetup(setacc)
+			property values ()
+			[		
+				timeout 10
+			]						
+			assert all[acc_ActTest1]
+		] 
+		claim req2:"The user account is updated correctly" [		
+			rationale "This test case is written to check if user account is updated successfully"
+			
+			activities
+			acc_ActTest2:"Test if user account can be updated successfully":
+			Plugins.checkUpdate()
+			property values ()
+			[		
+				timeout 10
+			]						
+			assert all[acc_ActTest2]
+		]  		
+		claim req3: "The payment is completed successfully" [
+			rationale "This test case is written to check if user account is updated successfully"
+			
+			activities
+			pay_ActTest1:"Test of successful toll payment":
+			Plugins.checkPayment(vehicle_paymnt_info)
+			property values ()
+			[
+				timeout 15
+			]
+			assert all[pay_ActTest1]
+		]
+		claim req4: "Show user account reports" [
+			rationale "This test case is written to check if user reports are shown successfully"
+			
+			activities
+			rep_ActTest1:"Test if reports are displayed properly":
+			Plugins.displayReport()
+			property values ()
+			[
+				timeout 15
+			]
+			assert all[rep_ActTest1]
+		]
+		claim req5: "The payment is processed successfully" [
+			rationale "This test case is written to check if payment is processed successfully"
+			
+			activities
+			pro_ActTest1:"Test of successful toll payment processing":
+			Plugins.processPayment(vehicle_paymnt_info)
+			property values ()
+			[
+				timeout 10
+			]
+			assert all[pro_ActTest1]
+		]
+		claim req6: "The violation is detected successfully" [
+			rationale "This test case is written to check if payment violations are detected or not"
+			
+			activities
+			vio_ActTest1:"Test of successful violation detection":
+				Plugins.checkViolation(vehicle_paymnt_info)
+				property values ()
+				[
+					timeout 15
+				]
+				assert all[vio_ActTest1]
+		]
+		claim req7: "The violation notification is generated"  [
+			rationale "This test case is written to check if payment violations notification is generated"
+			
+			activities
+			notif_ActTest1:"Test of generation of notification":
+			Plugins.notif(paymnt_violatn_notif)
+			property values ()
+			[
+				timeout 10
+			]
+			assert all[notif_ActTest1]
+		]
+		claim req8: "Coordinate payments between toll agencies"  [
+			rationale "This test case is written to check if payments are coordinated properly between different toll agencies"
+			
+			activities
+			coord_ActTest1:"Test of coordination between toll agencies":
+			Plugins.checkCoord()
+			property values ()
+			[
+				timeout 10
+			]
+			assert all[coord_ActTest1]
+		]
+		claim req9: "Coordinate payments between toll agencies"  [
+			rationale "This test case is written to check if payments are coordinated properly between different toll agencies"
+			
+			activities
+			coord_ActTest1:"Test of coordination between toll agencies":
+			Plugins.checkCoord()
+			property values ()
+			[
+				timeout 10
+			]
+			assert all[coord_ActTest1]
+		]
+		claim req10: "Interaction between DMV and PAC"  [
+			rationale "This test case is written to check interaction between DMV and PAC"
+			
+			activities
+			int_ActTest1:"Test of interaction between DMV and PAC":
+			Plugins.checkConnection()
+			property values ()
+			[
+				timeout 10
+			]
+			assert all[coord_ActTest1]
+		]
+		claim req11: "Interaction between RPE and PAC"  [
+			rationale "This test case is written to check interaction between RPE and PAC"
+			
+			activities
+			int_ActTest1:"Test of interaction between RPE and PAC":
+			Plugins.checkConnection()
+			property values ()
+			[
+				timeout 10
+			]
+			assert all[coord_ActTest1]
+		]
+		claim req12: "Interaction between driver and RPE"  [
+			rationale "This test case is written to check interaction between driver and RPE"
+			
+			activities
+			int_ActTest1:"Test of interaction between driver and RPE":
+			Plugins.checkConnection()
+			property values ()
+			[
+				timeout 10
+			]
+			assert all[coord_ActTest1]
+		]
+]
+

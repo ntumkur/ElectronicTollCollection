@@ -1,0 +1,748 @@
+package Toll_Collection
+public
+	with TollProperties, EMV2;
+
+annex EMV2
+{**
+	error types
+	  StatusError 				: type;  
+	  ValueError				: type;
+	  InternalError 			: type; 
+	  NoValue					: type extends ValueError;
+	  PaymentAmountWrongValue	: type extends ValueError;
+	  UserDetailsWrongValue		: type extends ValueError;
+	  TimingError				: type;
+	  PlatformFailure			: type;
+	  HardwareFailure			: type extends PlatformFailure;
+	  SoftwareFailure			: type extends PlatformFailure;
+	  ThreadFault renames type ErrorLibrary::EarlyServiceTermination;
+	end types;
+	
+	error behavior ErrorStates
+	  events 
+			BadValue	: error event;
+			LateValue	: error event;
+			Fail		: error event;
+	  states 
+	    Operational 	: initial state; 
+	    Failed 			: state;
+	  transitions
+	    WorkingTransition	: Operational -[Fail]-> Failed;
+	end behavior;
+**};	
+
+annex behavior_annex {**
+	states
+	off : initial state;
+	on : state;
+		
+	transitions
+	off->[]->on;
+	on-[]->off;
+**};
+	
+system Toll_Collection
+end Toll_Collection;
+
+system implementation Toll_Collection.impl
+	subcomponents
+		driver : system driver.impl;
+		vehicle_obe : system vehicle_obe.impl;
+		payment_device : system payment_device.impl;
+		its_roadway_paymnt_equipment : system its_roadway_paymnt_equipment.impl;
+		roadside_equipment : system roadside_equipment.impl;
+		personal_info_device : system personal_info_device.impl;
+		payment_administrator : system payment_administrator.impl;
+		payment_administration_center : system payment_administration_center.impl;
+		other_payment_administration : system other_payment_administration.impl;
+		financial_center : system financial_center.impl;
+		DMV : system DMV.impl;
+		enforcement_center : system enforcement_center.impl;	
+	connections
+		dr_ip: port driver.driver_input -> vehicle_obe.drvr_ip;
+		rqst: port driver.request_for_service -> vehicle_obe.request_for_service;
+		paymnt_trans_status: port its_roadway_paymnt_equipment.payment_transactn -> driver.payment_trans_status;
+		drv_updt : port vehicle_obe.driver_updates -> driver.driver_updates;
+		veh_pay_rqst: port payment_administration_center.paymnt_rqst -> vehicle_obe.vehicle_payment_request;
+		veh_pay_reqst: port payment_administration_center.paymnt_rqst -> roadside_equipment.vehicle_paymnt_rqst;
+		veh_pay_rqsts : port roadside_equipment.vehicle_paymnt_rqst -> vehicle_obe.vehicle_payment_request;
+		paymnt : port payment_device.payment -> vehicle_obe.payment;
+		payment : port payment_device.payment -> personal_info_device.payment;
+		paymnt_dev_info : port payment_device.paymnt_device_info -> vehicle_obe.paymnt_device_info;	
+		veh_pay_updt : port roadside_equipment.vehicle_payment_update -> vehicle_obe.vehicle_payment_update;
+		veh_paymnt_info: port vehicle_obe.vehicle_paymnt_info -> payment_administration_center.vehicle_paymnt_info;
+		veh_payment_info: port vehicle_obe.vehicle_paymnt_info -> roadside_equipment.vehicle_paymnt_info;
+		vehicle_payment_info: port roadside_equipment.vehicle_paymnt_info -> payment_administration_center.vehicle_paymnt_info;
+		paymnt_device_updt : port vehicle_obe.paymnt_device_updt -> payment_device.paymnt_device_updt;
+		reqst_for_payment : port vehicle_obe.reqst_for_payment ->payment_device.reqst_for_payment;
+		request_for_payment : port personal_info_device.reqst_for_paymnt ->payment_device.reqst_for_payment;	
+		traveller_paymnt_rqst : port payment_administration_center.traveller_paymnt_rqst -> personal_info_device.traveller_paymnt_rqst;
+		user_acc_report : port payment_administration_center.user_acc_report -> personal_info_device.user_acc_report;
+		traveller_paymnt_info : port personal_info_device.traveller_paymnt_info -> payment_administration_center.traveller_paymnt_info;
+		user_acc_setup : port personal_info_device.user_acc_setup -> payment_administration_center.user_acc_setup;
+		payment_instr : port its_roadway_paymnt_equipment.payment_instr -> roadside_equipment.payment_instr;
+		payment_instrn : port payment_administration_center.paymnt_instr -> its_roadway_paymnt_equipment.payment_instr;
+		payment_transactn : port roadside_equipment.payment_transactn -> its_roadway_paymnt_equipment.payment_transactn;
+		payment_trans : port its_roadway_paymnt_equipment.payment_transactn -> payment_administration_center.payment_transactn;
+		paymnt_info_presentatn : port payment_administration_center.paymnt_info_presentatn -> payment_administrator.paymnt_info_presentatn;
+		paymnt_admin_rqst : port payment_administrator.paymnt_admin_rqst -> payment_administration_center.paymnt_admin_rqst;
+		registratn : port DMV.registratn -> payment_administration_center.registratn;
+		transaction_status : port financial_center.transaction_status -> payment_administration_center.transaction_status;
+		paymnt_coordinatn : port other_payment_administration.paymnt_coordinatn -> payment_administration_center.paymnt_coordinatn;
+		payment_coordinatn : port payment_administration_center.paymnt_coordinatn -> other_payment_administration.paymnt_coordinatn;
+		license_rqst : port  payment_administration_center.license_rqst -> DMV.license_rqst;
+		paymnt_violatn_notif : port payment_administration_center.paymnt_violatn_notif -> enforcement_center.paymnt_violatn_notif;
+		paymnt_rqst: port payment_administration_center.paymnt_rqst -> financial_center.paymnt_rqst;
+end Toll_Collection.impl;
+
+system driver
+	features
+		driver_updates : in data port;
+		request_for_service : out data port;
+		driver_input : out data port;
+		payment_trans_status: in data port;
+	annex EMV2 
+	  {** 
+	    use types ErrorLibrary, Toll_Collection;
+	    use behavior Toll_Collection::ErrorStates;
+		error propagations
+		  driver_input: out propagation {ValueError};
+		  request_for_service: out propagation {InternalError};
+		  driver_updates : in propagation {InternalError};
+		  payment_trans_status: in propagation {ValueError};
+		flows
+			f0: error source driver_input{ValueError};
+			f1: error source request_for_service{InternalError};
+			f2: error path driver_updates {InternalError} -> driver_input{ValueError};
+			f3: error sink driver_updates{InternalError};
+			f4: error sink payment_trans_status{ValueError};
+		end propagations;			
+	**};			
+end driver;
+	
+system implementation driver.impl
+end driver.impl;
+
+system vehicle_obe
+	features
+		drvr_ip : in data port;
+		driver_updates : out data port;
+		vehicle_payment_request : in data port;
+		vehicle_payment_update : in data port;
+		payment : in data port;
+		paymnt_device_info : in data port;
+		payment_request_update : in data port;
+		vehicle_paymnt_info : out data port;
+		paymnt_device_updt : out data port;
+		reqst_for_payment : out data port;
+		request_for_service : in data port;
+	annex EMV2 
+	  {** 
+	    use types ErrorLibrary, Toll_Collection;	
+	    use behavior Toll_Collection::ErrorStates;   
+		error propagations
+		  drvr_ip: in propagation {ValueError};
+		  driver_updates: out propagation {InternalError};
+		  vehicle_payment_request : in propagation {ValueError};
+		  vehicle_payment_update : in propagation {ValueError};
+		  paymnt_device_updt : out propagation {ValueError};
+		  reqst_for_payment : out propagation {ValueError};
+		  request_for_service : in propagation {InternalError};
+		  payment : in propagation{PaymentAmountWrongValue};
+		  paymnt_device_info : in propagation{InternalError};
+		 flows
+		 	f0: error source driver_updates{InternalError};
+		 	f1: error source paymnt_device_updt{ValueError};
+		 	f2: error sink vehicle_payment_update{ValueError};
+		 	f3: error sink request_for_service{InternalError};
+		 	f4: error sink payment{PaymentAmountWrongValue};
+		 	f5: error sink paymnt_device_info{InternalError};
+		end propagations;
+		component error behavior
+			events
+				BadInput    	: error event;
+				BadOutput		: error event;
+				Recovery		: recover event;
+			transitions
+				t1 : Operational -[BadInput]-> Failed;
+				t2 : Operational -[BadOutput]-> Failed;
+				t3 : Failed      -[Recovery]-> Operational;
+		end component;	
+		properties	
+			EMV2::OccurrenceDistribution => TollProperties::DataCollectionFailureRate 
+      		applies to f0, f1; 
+      		EMV2::OccurrenceDistribution => TollProperties::RequestResponseFailureRate
+      		applies to f2, f3; 
+      		EMV2::OccurrenceDistribution => TollProperties::PaymentFailureRate
+      		applies to f4; 
+	  **};
+end vehicle_obe;
+
+system implementation vehicle_obe.impl
+	subcomponents
+		veh_toll_paymnt : system veh_toll_paymnt.impl;
+end vehicle_obe.impl;
+		 
+system veh_toll_paymnt
+end veh_toll_paymnt;
+
+system implementation veh_toll_paymnt.impl
+	subcomponents
+		paymnt_dev_interface : process paymnt_dev_interface.impl;
+end veh_toll_paymnt.impl;
+
+process paymnt_dev_interface
+	features
+		driver_toll_paymnt_credit_identity : in data port;
+		fpd_confirm_paymnt_at_toll_plaza : in data port;
+		fpd_toll_vehicle_paymnt_data : in data port;
+		toll_paymnt_cnfrmtn : out data port;
+		toll_paymnt_debited : in data port;
+		toll_paymnt_rqst : in data port;
+		toll_veh_paymnt_data_clr : in data port;
+		toll_veh_paymnt_data_collect : out data port;
+		toll_veh_paymnt_data_rqst : in data port;
+		toll_veh_paymnt_data_store : in out data port;
+		toll_veh_paymnt_data_updt : in data port;
+		toll_veh_paymnt_nmbr : out data port;
+		tpd_debited_paymnt_at_toll_plaza : out data port;
+		tpd_rqst_paymnt_at_toll_plaza : out data port;
+	annex EMV2 
+	{** 
+	    use types ErrorLibrary, Toll_Collection;
+	    use behavior Toll_Collection::ErrorStates;
+		error propagations
+		  toll_paymnt_rqst: in propagation {ValueError};
+		  toll_veh_paymnt_data_updt: in propagation {PaymentAmountWrongValue};
+		  tpd_rqst_paymnt_at_toll_plaza : in propagation {ValueError};
+		flows
+			fl1: error sink toll_paymnt_rqst{ValueError};
+			fl2: error sink toll_veh_paymnt_data_updt{PaymentAmountWrongValue};
+			fl3: error sink tpd_rqst_paymnt_at_toll_plaza{ValueError};
+		end propagations;
+		component error behavior
+			events
+			BadInput    	: error event;
+			BadOutput		: error event;
+			Recovery		: recover event;
+			transitions
+			t1 : Operational -[BadInput]-> Failed;
+			t2 : Operational -[BadOutput]-> Failed;
+			t3 : Failed      -[Recovery]-> Operational;
+		end component;
+		properties
+			EMV2::OccurrenceDistribution => TollProperties::PaymentFailureRate 
+      		applies to fl2; 
+      		EMV2::OccurrenceDistribution => TollProperties::RequestResponseFailureRate
+      		applies to fl1, fl3;
+	 **};
+end paymnt_dev_interface;
+
+process implementation paymnt_dev_interface.impl
+	subcomponents
+		credit_identity : thread credit_identity.impl;
+		paymnt_cnfrmtn : thread paymnt_cnfrmtn.impl;
+		toll_cost : thread toll_cost.impl;
+	connections
+		credit1 : port driver_toll_paymnt_credit_identity -> credit_identity.card_type;
+		credit2 : port driver_toll_paymnt_credit_identity -> credit_identity.card_number;
+		credit3 : port driver_toll_paymnt_credit_identity -> credit_identity.name_on_card;
+		credit4 : port driver_toll_paymnt_credit_identity -> credit_identity.card_expiry;
+		paymntS: port fpd_confirm_paymnt_at_toll_plaza -> paymnt_cnfrmtn.payment_successful;
+		paymntF: port fpd_confirm_paymnt_at_toll_plaza -> paymnt_cnfrmtn.payment_fail;
+		toll : port toll_paymnt_rqst -> toll_cost.toll_price;
+end paymnt_dev_interface.impl;
+
+thread credit_identity
+	features
+		card_type : in data port;
+		card_number : in data port;
+		name_on_card : in data port;
+		card_expiry : in data port;
+end credit_identity;
+
+thread implementation credit_identity.impl
+end credit_identity.impl;
+
+thread paymnt_cnfrmtn
+	features
+		payment_successful : in data port;
+		payment_fail : in data port;
+end paymnt_cnfrmtn;
+
+thread implementation paymnt_cnfrmtn.impl
+end paymnt_cnfrmtn.impl;
+
+thread toll_cost
+	features
+		toll_price : in data port;
+end toll_cost;
+
+thread implementation toll_cost.impl
+end toll_cost.impl;
+
+system payment_device
+	features
+		payment : out data port;
+		paymnt_device_info : out data port;
+		reqst_for_payment : in data port;
+		paymnt_device_updt : in data port;	
+	annex EMV2 
+	  {** 
+	    use types ErrorLibrary, Toll_Collection;	
+	    use behavior Toll_Collection::ErrorStates;   
+		error propagations
+		  payment: in propagation {ValueError};
+		  paymnt_device_info: out propagation {InternalError};
+		  reqst_for_payment : in propagation {ValueError};
+		  paymnt_device_updt : in propagation {ValueError};
+		 flows
+		 	f0: error sink payment{ValueError};
+		 	f1: error source paymnt_device_info{InternalError};
+		 	f2: error sink reqst_for_payment{ValueError};
+		 	f3: error sink paymnt_device_updt{ValueError};
+		end propagations;
+		component error behavior
+			events
+				BadInput    	: error event;
+				BadOutput		: error event;
+				Recovery		: recover event;
+			transitions
+				t1 : Operational -[BadInput]-> Failed;
+				t2 : Operational -[BadOutput]-> Failed;
+				t3 : Failed      -[Recovery]-> Operational;
+		end component;	
+		properties	
+			EMV2::OccurrenceDistribution => TollProperties::DataCollectionFailureRate 
+      		applies to f0, f1; 
+      		EMV2::OccurrenceDistribution => TollProperties::RequestResponseFailureRate
+      		applies to f2, f3; 
+      		EMV2::OccurrenceDistribution => TollProperties::PaymentFailureRate
+      		applies to f1; 
+	  **};	
+end payment_device;
+
+system implementation payment_device.impl
+end payment_device.impl;
+
+system its_roadway_paymnt_equipment
+	features
+		payment_trans_status: out data port;
+		payment_transactn : in out data port;
+		payment_instr : in out data port;
+		vehicle_entry_exit : in out data port;
+	annex EMV2 
+	  {** 
+	    use types ErrorLibrary, Toll_Collection;	
+	    use behavior Toll_Collection::ErrorStates;   
+		error propagations
+		  payment_trans_status: out propagation {ValueError};
+		  payment_transactn: in propagation {InternalError};
+		  payment_instr : in propagation {ValueError};
+		  vehicle_entry_exit : in propagation {InternalError};
+		 flows
+		 	f0: error source payment_trans_status{ValueError};
+		 	f1: error sink payment_transactn{InternalError};
+		 	f2: error sink payment_instr{ValueError};
+		 	f3: error sink vehicle_entry_exit{InternalError};
+		end propagations;
+		component error behavior
+			events
+				BadInput    	: error event;
+				BadOutput		: error event;
+				Recovery		: recover event;
+			transitions
+				t1 : Operational -[BadInput]-> Failed;
+				t2 : Operational -[BadOutput]-> Failed;
+				t3 : Failed      -[Recovery]-> Operational;
+		end component;	
+		properties	
+			EMV2::OccurrenceDistribution => TollProperties::TransactionFailureRate 
+      		applies to f0, f1; 
+      		EMV2::OccurrenceDistribution => TollProperties::DataCollectionFailureRate
+      		applies to f2, f3;  
+	  **};
+end its_roadway_paymnt_equipment;
+
+system implementation its_roadway_paymnt_equipment.impl
+	subcomponents
+		roadway_toll_collectn_support : system roadway_toll_collectn_support.impl;
+end its_roadway_paymnt_equipment.impl;
+
+system roadway_toll_collectn_support
+end roadway_toll_collectn_support;
+
+system implementation roadway_toll_collectn_support.impl
+	subcomponents
+		produce_roadside_displays : process produce_roadside_displays.impl;
+end roadway_toll_collectn_support.impl;
+
+process produce_roadside_displays
+	features
+		td_toll_paymnt_cnfrm : out data port;
+		td_toll_paymnt_invalid : out data port;
+		toll_paymnt_pull_in_msg : in data port;
+		toll_veh_paymnt_prb_msg : in data port;
+end produce_roadside_displays;
+
+process implementation produce_roadside_displays.impl
+	subcomponents
+		veh_identity : thread veh_identity.impl;
+	connections
+		veh_identity1 : port toll_paymnt_pull_in_msg -> veh_identity.veh_nmbr;
+end produce_roadside_displays.impl;
+
+thread veh_identity
+	features
+		veh_nmbr : in data port;
+end veh_identity;
+
+thread implementation veh_identity.impl
+	
+end veh_identity.impl;
+
+system roadside_equipment
+	features
+		vehicle_entry_exit : in data port;
+		payment_instr : in data port;
+		vehicle_paymnt_rqst : in out data port;
+		payment_transactn : out data port;
+		roaduse_history : out data port;
+		vehicle_paymnt_info : in out data port;	
+		vehicle_payment_update : out data port;	
+	annex EMV2 
+	  {** 
+	    use types ErrorLibrary, Toll_Collection;	
+	    use behavior Toll_Collection::ErrorStates;   
+		error propagations
+		  payment_transactn: in propagation {InternalError};
+		  payment_instr : in propagation {ValueError};
+		  vehicle_entry_exit : in propagation {InternalError};
+		 flows
+		 	f1: error sink payment_transactn{InternalError};
+		 	f2: error sink payment_instr{ValueError};
+		 	f3: error sink vehicle_entry_exit{InternalError};
+		end propagations;
+		component error behavior
+			events
+				BadInput    	: error event;
+				BadOutput		: error event;
+				Recovery		: recover event;
+			transitions
+				t1 : Operational -[BadInput]-> Failed;
+				t2 : Operational -[BadOutput]-> Failed;
+				t3 : Failed      -[Recovery]-> Operational;
+		end component;	
+		properties	
+			EMV2::OccurrenceDistribution => TollProperties::TransactionFailureRate 
+      		applies to f1, f2;   
+	  **};
+end	roadside_equipment;	
+
+system implementation roadside_equipment.impl
+	subcomponents
+		rsetc : system rsetc.impl;
+end roadside_equipment.impl;
+
+system rsetc	
+end rsetc;
+
+system implementation rsetc.impl
+	subcomponents
+		bill_driver : process bill_driver.impl;
+end rsetc.impl;
+
+process bill_driver
+	features
+		curr_toll_trans_from_roadside : in data port;
+		toll_paymnt_cnfrmtn : in data port;
+		toll_paymnt_debited : out data port;
+		toll_paymnt_rqst : out data port;
+end bill_driver;
+
+process implementation bill_driver.impl
+	subcomponents
+		toll_cost1 : thread toll_cost1.impl;
+		veh_identity1 : thread veh_identity1.impl;
+		paymnt_cnfrmtn1 : thread paymnt_cnfrmtn1.impl;
+	connections
+		t1 : port curr_toll_trans_from_roadside -> toll_cost1.toll_price;
+		t2 : port toll_paymnt_cnfrmtn ->  paymnt_cnfrmtn1.payment_successful;
+		t3 : port toll_paymnt_cnfrmtn ->  paymnt_cnfrmtn1.payment_fail;
+		t4 : port curr_toll_trans_from_roadside -> veh_identity1.veh_nmbr;
+end bill_driver.impl;
+
+thread toll_cost1
+	features
+		toll_price : in data port;
+end toll_cost1;
+
+thread implementation toll_cost1.impl
+end toll_cost1.impl;
+
+thread veh_identity1
+	features
+		veh_nmbr : in data port;
+end veh_identity1;
+
+thread implementation veh_identity1.impl	
+end veh_identity1.impl;
+
+thread paymnt_cnfrmtn1
+	features
+		payment_successful : in data port;
+		payment_fail : in data port;
+end paymnt_cnfrmtn1;
+
+thread implementation paymnt_cnfrmtn1.impl
+end paymnt_cnfrmtn1.impl;
+
+system personal_info_device
+	features
+		traveller_paymnt_rqst : in data port;
+		user_acc_report : in data port;
+		payment : in data port;
+		traveller_paymnt_info : out data port;
+		user_acc_setup : out data port;
+		reqst_for_paymnt : out data port;
+	annex EMV2 
+	  {** 
+	    use types ErrorLibrary, Toll_Collection;	
+	    use behavior Toll_Collection::ErrorStates;   
+		error propagations
+		  traveller_paymnt_rqst: in propagation {ValueError};
+		  user_acc_report : in propagation {UserDetailsWrongValue};
+		 flows
+		 	f1: error sink traveller_paymnt_rqst{ValueError};
+		 	f2: error sink user_acc_report{UserDetailsWrongValue};
+		end propagations;
+		component error behavior
+			events
+				BadInput    	: error event;
+				BadOutput		: error event;
+				Recovery		: recover event;
+			transitions
+				t1 : Operational -[BadInput]-> Failed;
+				t2 : Operational -[BadOutput]-> Failed;
+				t3 : Failed      -[Recovery]-> Operational;
+		end component;	
+		properties	
+			EMV2::OccurrenceDistribution => TollProperties::TransactionFailureRate 
+      		applies to f1;
+      		EMV2::OccurrenceDistribution => TollProperties::UserRegistrationFailureRate 
+      		applies to f2;  
+      		EMV2::OccurrenceDistribution => TollProperties::UserValidationFailureRate 
+      		applies to f2;
+      		 
+	  **};
+end personal_info_device;
+
+system implementation personal_info_device.impl
+	subcomponents
+		pers_interactive_travlr_info : system pers_interactive_travlr_info.impl;
+end personal_info_device.impl;
+
+system pers_interactive_travlr_info	
+end pers_interactive_travlr_info;
+
+system implementation pers_interactive_travlr_info.impl
+	subcomponents
+		personal_paymnt_dev_intrfc : process personal_paymnt_dev_intrfc.impl;
+end pers_interactive_travlr_info.impl;
+
+process personal_paymnt_dev_intrfc
+	features
+		fpd_travlr_pers_ip_credit_identity : in data port;
+		tpd_debited_paymnt_at_pers_device : out data port;
+end personal_paymnt_dev_intrfc;
+
+process implementation personal_paymnt_dev_intrfc.impl	
+end personal_paymnt_dev_intrfc.impl;
+
+system payment_administrator
+	features
+		paymnt_info_presentatn : in data port;
+		paymnt_admin_rqst : out data port;
+end payment_administrator;
+
+system implementation payment_administrator.impl
+end payment_administrator.impl;
+
+system payment_administration_center
+	features
+		payment_transactn : in data port;
+		transaction_status : in data port;
+		paymnt_rqst : out data port;
+		paymnt_coordinatn : in out data port;
+		paymnt_instr : out data port;
+		paymnt_info_presentatn : out data port;
+		traveller_paymnt_rqst : out data port;
+		user_acc_report : out data port;
+		vehicle_paymnt_rqst : out data port;
+		paymnt_admin_rqst : in data port;
+		traveller_paymnt_info : in data port;
+		user_acc_setup : in data port;
+		roaduse_history : in data port;
+		vehicle_paymnt_info : in data port;	
+		registratn : in data port;
+		license_rqst : out data port;
+		paymnt_violatn_notif : out data port;
+end payment_administration_center;
+
+system implementation payment_administration_center.impl
+	subcomponents
+		pac_paymnt_administration : system pac_paymnt_administration.impl;
+end payment_administration_center.impl;
+
+system pac_paymnt_administration
+end pac_paymnt_administration;
+
+system implementation pac_paymnt_administration.impl
+	subcomponents
+		process_violatn_for_tolls : process process_violatn_for_tolls.impl;
+		mng_bad_toll_paymnt_data : process mng_bad_toll_paymnt_data.impl;
+		updt_toll_price_data : process updt_toll_price_data.impl;
+		mng_toll_processing : process mng_toll_processing.impl;
+end pac_paymnt_administration.impl;
+
+process process_violatn_for_tolls
+	features
+		enforcement_data_for_tolls : in out data port;
+		fdmv_toll_violatn_veh_registratn : in data port;
+		tdmv_toll_violatn_veh_license : out data port;
+		tec_toll_violatn_data : out data port;
+		toll_violatn_info : in data port;		
+end process_violatn_for_tolls;
+
+process implementation process_violatn_for_tolls.impl
+end process_violatn_for_tolls.impl;
+
+process mng_bad_toll_paymnt_data
+	features
+		bad_toll_paymnt_list : in out data port;
+		toll_paymnt_violator_data : in data port;
+end mng_bad_toll_paymnt_data;
+
+process implementation mng_bad_toll_paymnt_data.impl
+	subcomponents
+		credit_identity2 : thread credit_identity2.impl;
+		toll_cost2 : thread toll_cost2.impl;
+	connections
+		cr1 : port bad_toll_paymnt_list -> credit_identity2.card_number;
+		cr2 : port bad_toll_paymnt_list -> credit_identity2.name_on_card;
+		c3: port toll_paymnt_violator_data -> credit_identity2.card_number;
+		c4: port toll_paymnt_violator_data -> credit_identity2.name_on_card;
+		c5: port toll_paymnt_violator_data -> toll_cost2.toll_price;
+end mng_bad_toll_paymnt_data.impl;
+
+thread credit_identity2
+	features
+		card_type : in data port;
+		card_number : in data port;
+		name_on_card : in data port;
+		card_expiry : in data port;
+end credit_identity2;
+
+thread implementation credit_identity2.impl
+end credit_identity2.impl;
+
+thread toll_cost2
+	features
+		toll_price : in data port;
+end toll_cost2;
+
+thread implementation toll_cost2.impl
+end toll_cost2.impl;
+
+process updt_toll_price_data
+	features
+		fpa_toll_price_data : in data port;
+		toll_price_changes_rqst : in data port;
+		toll_price_changes_response : out data port;
+		toll_price_data : out data port;
+		toll_price_data_rqst : in data port;
+end updt_toll_price_data;
+
+process implementation updt_toll_price_data.impl
+end updt_toll_price_data.impl;
+
+process mng_toll_processing
+	features
+		curr_toll_trans : in data port;
+		ffc_confrm_toll_paymnt : in data port;
+		tfc_rqst_toll_paymnt : out data port;
+		toll_trans_records : in out data port;	
+end mng_toll_processing;
+
+process implementation mng_toll_processing.impl
+	subcomponents
+		credit_identity3 : thread credit_identity3.impl;
+		toll_cost3 : thread toll_cost3.impl;
+	connections
+		c1: port curr_toll_trans -> credit_identity3.card_number;
+		c2: port curr_toll_trans -> credit_identity3.name_on_card;
+		c3: port ffc_confrm_toll_paymnt -> toll_cost3.toll_price;
+end mng_toll_processing.impl;
+
+thread credit_identity3
+	features
+		card_type : in data port;
+		card_number : in data port;
+		name_on_card : in data port;
+		card_expiry : in data port;
+end credit_identity3;
+
+thread implementation credit_identity3.impl
+end credit_identity3.impl;
+
+thread toll_cost3
+	features
+		toll_price : in data port;
+end toll_cost3;
+
+thread implementation toll_cost3.impl
+end toll_cost3.impl;
+
+system other_payment_administration
+	features
+		paymnt_coordinatn : in out data port;
+end other_payment_administration;
+
+system implementation other_payment_administration.impl
+end other_payment_administration.impl;
+
+system financial_center
+	features
+		transaction_status : out data port;
+		paymnt_rqst : in data port;
+end financial_center;
+
+system implementation financial_center.impl
+end financial_center.impl;
+
+system DMV
+	features
+		registratn : out data port;
+		license_rqst : in data port;
+end DMV;
+
+system implementation DMV.impl
+end DMV.impl;
+
+system enforcement_center
+	features
+		paymnt_violatn_notif : in data port;
+end enforcement_center;
+
+system implementation enforcement_center.impl
+end enforcement_center.impl;
+
+annex resolute {**  
+      	prove check_connection1 ()
+      	prove check_connection2 ()
+      	prove check_connection3 ()
+		prove check_connection4 ()
+		prove check_connection5 ()
+**};
+
+end Toll_Collection;
